@@ -1,55 +1,59 @@
-import resizeSVG from '../../assets/icons/resize.svg'
+import resizeSVG from "../../assets/icons/resize.svg";
 
 export class Resize {
-    element: HTMLElement
+    public element: HTMLElement;
 
-    constructor(vditor: Vditor) {
-        this.element = document.createElement('div')
-        this.element.className = 'vditor-resize'
-        this.element.innerHTML = resizeSVG
+    constructor(vditor: IVditor) {
+        this.element = document.createElement("div");
+        this.element.className = `vditor-resize vditor-resize--${vditor.options.resize.position}`;
+        this.element.innerHTML = `<div>${resizeSVG}</div>`;
 
-        this.bindEvent(vditor)
+        this.bindEvent(vditor);
     }
 
-    private bindEvent(vditor: Vditor) {
-        this.element.addEventListener('mousedown', function (event: MouseEvent) {
+    private bindEvent(vditor: IVditor) {
+        this.element.addEventListener("mousedown", (event: MouseEvent) => {
 
-            const _document = <IEDocument>document;
-            const vditorElement = document.getElementById(vditor.id)
+            const documentSelf = document;
+            const vditorElement = document.getElementById(vditor.id);
             const y = event.clientY;
-            const height = vditorElement.offsetHeight
-            _document.ondragstart = () => false;
-            _document.onselectstart = "return false;";
-            _document.onselect = () => {
-                (<IEDocument>document).selection.empty()
-            };
+            const height = vditorElement.offsetHeight;
+            const minHeight = 63 + vditorElement.querySelector(".vditor-toolbar").clientHeight;
+            documentSelf.ondragstart = () => false;
 
             if (window.captureEvents) {
                 window.captureEvents();
             }
 
-            _document.onmousemove = function (event: MouseEvent) {
-                if (vditor.options.resize.position === 'top') {
-                    vditorElement.style.height = Math.max(100, height + (y - event.clientY)) + 'px'
+            this.element.className = this.element.className + " vditor-resize--selected";
+
+            documentSelf.onmousemove = (moveEvent: MouseEvent) => {
+                if (vditor.options.resize.position === "top") {
+                    vditorElement.style.height = Math.max(minHeight, height + (y - moveEvent.clientY)) + "px";
                 } else {
-                    vditorElement.style.height = Math.max(100, height + (event.clientY - y)) + 'px'
+                    vditorElement.style.height = Math.max(minHeight, height + (moveEvent.clientY - y)) + "px";
+                }
+                if (vditor.options.typewriterMode) {
+                    vditor.editor.element.style.paddingBottom =
+                        vditor.editor.element.parentElement.offsetHeight / 2 + "px";
                 }
             };
 
-            _document.onmouseup = function () {
+            documentSelf.onmouseup = () => {
                 if (vditor.options.resize.after) {
-                    vditor.options.resize.after(vditorElement.offsetHeight - height)
+                    vditor.options.resize.after(vditorElement.offsetHeight - height);
                 }
 
                 if (window.captureEvents) {
                     window.captureEvents();
                 }
-                _document.onmousemove = null;
-                _document.onmouseup = null;
-                _document.ondragstart = null;
-                _document.onselectstart = null;
-                _document.onselect = null;
-            }
-        })
+                documentSelf.onmousemove = null;
+                documentSelf.onmouseup = null;
+                documentSelf.ondragstart = null;
+                documentSelf.onselectstart = null;
+                documentSelf.onselect = null;
+                this.element.className = this.element.className.replace(/ vditor-resize--selected/g, "");
+            };
+        });
     }
 }

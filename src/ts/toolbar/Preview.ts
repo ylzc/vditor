@@ -1,32 +1,34 @@
 import previewSVG from "../../assets/icons/preview.svg";
-import {MenuItemClass} from "./MenuItemClass";
+import {getEventName} from "../util/getEventName";
+import {setPreviewMode} from "../util/setPreviewMode";
+import {MenuItem} from "./MenuItem";
 
-export class Preview extends MenuItemClass {
-    constructor(vditor: Vditor, menuItem: MenuItem) {
-        super(vditor, menuItem)
-        this.element.children[0].innerHTML = menuItem.icon || previewSVG
-        if (vditor.options.preview.show) {
-            this.element.children[0].className = `vditor-tooltipped vditor-tooltipped__${menuItem.tipPosition} vditor-menu--current`
+export class Preview extends MenuItem {
+    constructor(vditor: IVditor, menuItem: IMenuItem) {
+        super(vditor, menuItem);
+        const hasWYSIWYG = vditor.options.toolbar.find((item: IMenuItem) => {
+            if (item.name === "wysiwyg") {
+                return true;
+            }
+        });
+        if (vditor.currentMode === "wysiwyg" && hasWYSIWYG) {
+            this.element.style.display = "none";
         }
-        this._bindEvent(vditor, menuItem)
+        this.element.children[0].innerHTML = menuItem.icon || previewSVG;
+        if (vditor.currentPreviewMode === "preview") {
+            this.element.children[0].className =
+                `vditor-tooltipped vditor-tooltipped__${menuItem.tipPosition} vditor-menu--current`;
+        }
+        this._bindEvent(vditor);
     }
 
-    _bindEvent(vditor: Vditor, menuItem: MenuItem) {
-        this.element.children[0].addEventListener('click', function () {
-            const vditorElement = document.getElementById(vditor.id)
-            let className
-            if (vditor.preview.element.style.display === 'block') {
-                vditor.preview.element.style.display = 'none'
-                className = `vditor-tooltipped vditor-tooltipped__${menuItem.tipPosition}`
+    public _bindEvent(vditor: IVditor) {
+        this.element.children[0].addEventListener(getEventName(), () => {
+            if (vditor.currentPreviewMode === "preview") {
+                setPreviewMode("editor", vditor);
             } else {
-                vditor.preview.element.style.display = 'block'
-                className = `vditor-tooltipped vditor-tooltipped__${menuItem.tipPosition} vditor-menu--current`
-                vditor.preview.render(vditor)
+                setPreviewMode("preview", vditor);
             }
-            if (vditorElement.className.indexOf('vditor--fullscreen') > -1) {
-                className = className.replace('__n', '__s')
-            }
-            this.className = className
-        })
+        });
     }
 }

@@ -2,19 +2,20 @@
  * @fileoverview webpack.
  *
  * @author <a href="http://vanessa.b3log.org">Liyuan Li</a>
- * @version 0.1.0.0, Jan 23, 2019
+ * @version 0.2.0.0, Aug 22, 2019
  */
 
 const path = require('path')
 const fs = require('fs')
 const webpack = require('webpack')
-const CleanWebpackPlugin = require('clean-webpack-plugin')
+const {CleanWebpackPlugin} = require('clean-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin')
 const WebpackOnBuildPlugin = require('on-build-webpack')
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
+const CopyPlugin = require('copy-webpack-plugin')
+const BundleAnalyzerPlugin = require(
+  'webpack-bundle-analyzer').BundleAnalyzerPlugin
 const pkg = require('./package.json')
-
 const banner = new webpack.BannerPlugin({
   banner: `Vditor v${pkg.version} - A markdown editor written in TypeScript.
   
@@ -46,17 +47,78 @@ SOFTWARE.
 module.exports = [
   {
     mode: 'production',
+    entry: {
+      'index.classic': './src/assets/scss/classic.scss',
+      'index.dark': './src/assets/scss/dark.scss',
+    },
+    resolve: {
+      extensions: ['.scss'],
+    },
+    module: {
+      rules: [
+        {
+          test: /\.scss$/,
+          include: [path.resolve(__dirname, 'src/assets')],
+          use: [
+            MiniCssExtractPlugin.loader,
+            {
+              loader: 'css-loader', // translates CSS into CommonJS
+              options: {
+                url: false,
+              },
+            },
+            {
+              loader: 'postcss-loader',
+              options: {
+                ident: 'postcss',
+                plugins: () => [
+                  require('autoprefixer')({grid: true, remove: false}),
+                ],
+              },
+            },
+            {
+              loader: 'sass-loader', // compiles Sass to CSS
+            },
+          ],
+        },
+      ],
+    },
+    optimization: {
+      minimizer: [
+        new OptimizeCSSAssetsPlugin({}),
+      ],
+    },
+    plugins: [
+      new CleanWebpackPlugin(
+        {cleanOnceBeforeBuildPatterns: [path.join(__dirname, 'dist')]}),
+      banner,
+      new MiniCssExtractPlugin({
+        filename: '[name].css',
+      }),
+      new WebpackOnBuildPlugin(() => {
+        fs.unlinkSync('./dist/index.classic.js')
+        fs.unlinkSync('./dist/index.dark.js')
+      }),
+      new CopyPlugin([
+        {from: 'src/images', to: 'images'},
+        {from: 'src/js', to: 'js'},
+      ]),
+    ],
+  }, {
+    mode: 'production',
     output: {
       filename: '[name].js',
       path: path.resolve(__dirname, 'dist'),
       chunkFilename: '[name].bundle.js',
-      publicPath: `https://vditor.b3log.org/${pkg.version}/`,
+      // pkg.cdn: https://static.hacpai.com/js/lib | https://unpkg.com | https://cdn.jsdelivr.net/npm
+      publicPath: `${pkg.cdn}/vditor@${pkg.version}/dist/`,
       libraryTarget: 'umd',
       library: 'Vditor',
       libraryExport: 'default',
     },
     entry: {
       'index.min': './src/index.ts',
+      'method.min': './src/method.ts'
     },
     resolve: {
       extensions: ['.js', '.ts', '.svg', 'png'],
@@ -116,63 +178,22 @@ module.exports = [
     },
     plugins: [
       // new BundleAnalyzerPlugin(),
-      new CleanWebpackPlugin(['./dist']),
       new webpack.DefinePlugin({
         VDITOR_VERSION: JSON.stringify(pkg.version),
+        CDN_PATH: JSON.stringify(pkg.cdn),
       }),
       banner,
     ],
-  }, {
-    mode: 'production',
-    entry: {
-      'index.classic': './src/assets/scss/classic.scss',
-      'index.dark': './src/assets/scss/dark.scss',
-    },
-    resolve: {
-      extensions: ['.scss'],
-    },
-    module: {
-      rules: [
-        {
-          test: /\.scss$/,
-          include: [path.resolve(__dirname, 'src/assets')],
-          use: [
-            MiniCssExtractPlugin.loader,
-            {
-              loader: 'css-loader', // translates CSS into CommonJS
-              options: {
-                url: false,
-              },
-            },
-            {
-              loader: 'postcss-loader',
-              options: {
-                ident: 'postcss',
-                plugins: () => [
-                  require('autoprefixer')({grid: true, remove: false}),
-                ],
-              },
-            },
-            {
-              loader: 'sass-loader', // compiles Sass to CSS
-            },
-          ],
-        },
-      ],
-    },
     optimization: {
-      minimizer: [
-        new OptimizeCSSAssetsPlugin({}),
-      ],
+      namedModules: true,
+      namedChunks: true,
+      splitChunks: {
+        cacheGroups: {
+          default: false,
+          vendors: {
+            test: /null/,
+          },
+        },
+      },
     },
-    plugins: [
-      banner,
-      new MiniCssExtractPlugin({
-        filename: '[name].css',
-      }),
-      new WebpackOnBuildPlugin(() => {
-        fs.unlinkSync('./dist/index.classic.js')
-        fs.unlinkSync('./dist/index.dark.js')
-      }),
-    ],
   }]

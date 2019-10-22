@@ -1,144 +1,227 @@
 import {VDITOR_VERSION} from "./ts/constants";
-import {Toolbar} from "./ts/toolbar/index";
-import {OptionsClass} from "./ts/util/OptionsClass";
-import {Ui} from "./ts/ui/index";
-import {Editor, insertText} from "./ts/editor/index";
-import {Hotkey} from "./ts/hotkey/index";
-import {Preview} from "./ts/preview/index";
 import {Counter} from "./ts/counter/index";
-import {Resize} from "./ts/resize/index";
+import {DevTools} from "./ts/devtools";
+import {formatRender} from "./ts/editor/formatRender";
+import {getSelectText} from "./ts/editor/getSelectText";
+import {getText} from "./ts/editor/getText";
+import {html2md} from "./ts/editor/html2md";
+import {Editor} from "./ts/editor/index";
+import {insertText} from "./ts/editor/insertText";
+import {setSelectionByPosition} from "./ts/editor/setSelection";
+import {getCursorPosition} from "./ts/hint/getCursorPosition";
 import {Hint} from "./ts/hint/index";
-import {getTextareaPosition} from "./ts/util/textareaPosition";
-import {UploadClass} from "./ts/upload/index";
+import {abcRender} from "./ts/markdown/abcRender";
+import {chartRender} from "./ts/markdown/chartRender";
+import {codeRender} from "./ts/markdown/codeRender";
+import {highlightRender} from "./ts/markdown/highlightRender";
+import {mathRender} from "./ts/markdown/mathRender";
+import {mathRenderByLute} from "./ts/markdown/mathRenderByLute";
+import {loadLuteJs, md2htmlByPreview, md2htmlByVditor} from "./ts/markdown/md2html";
+import {mediaRender} from "./ts/markdown/mediaRender";
+import {mermaidRender} from "./ts/markdown/mermaidRender";
+import {previewRender} from "./ts/markdown/previewRender";
+import {Preview} from "./ts/preview/index";
+import {Resize} from "./ts/resize/index";
+import {Tip} from "./ts/tip";
+import {Toolbar} from "./ts/toolbar/index";
+import {Ui} from "./ts/ui/index";
+import {Undo} from "./ts/undo";
+import {Upload} from "./ts/upload/index";
+import {Options} from "./ts/util/Options";
+import {setPreviewMode} from "./ts/util/setPreviewMode";
+import {WYSIWYG} from "./ts/wysiwyg";
 
-class VditorClass {
-    readonly version: string;
-    vditor: Vditor
+class Vditor {
 
-    constructor(id: string, options?: Options) {
+    public static codeRender = codeRender;
+    public static highlightRender = highlightRender;
+    public static mathRenderByLute = mathRenderByLute;
+    public static mathRender = mathRender;
+    public static mermaidRender = mermaidRender;
+    public static chartRender = chartRender;
+    public static abcRender = abcRender;
+    public static mediaRender = mediaRender;
+    public static md2html = md2htmlByPreview;
+    public static preview = previewRender;
+    public readonly version: string;
+    public vditor: IVditor;
+
+    constructor(id: string, options?: IOptions) {
         this.version = VDITOR_VERSION;
 
-        const getOptions = new OptionsClass(options)
-        const mergedOptions = getOptions.merge()
+        const getOptions = new Options(options);
+        const mergedOptions = getOptions.merge();
 
         this.vditor = {
+            currentMode: mergedOptions.mode.indexOf("wysiwyg") > -1 ? "wysiwyg" : "markdown",
+            currentPreviewMode: mergedOptions.preview.mode,
             id,
+            lute: undefined,
             options: mergedOptions,
-            mdTimeoutId: -1
-        }
+            originalInnerHTML: document.getElementById(id).innerHTML,
+            tip: new Tip(),
+            undo: undefined,
+            wysiwyg: undefined,
+        };
 
         if (mergedOptions.counter > 0) {
-            const counter = new Counter(this.vditor)
-            this.vditor.counter = counter
+            const counter = new Counter(this.vditor);
+            this.vditor.counter = counter;
         }
 
-        const editor = new Editor(this.vditor)
-        this.vditor.editor = editor
+        if (mergedOptions.mode !== "wysiwyg-only") {
+            this.vditor.editor = new Editor(this.vditor);
+        }
+
+        this.vditor.undo = new Undo();
 
         if (mergedOptions.resize.enable) {
-            const resize = new Resize(this.vditor)
-            this.vditor.resize = resize
+            const resize = new Resize(this.vditor);
+            this.vditor.resize = resize;
         }
 
         if (mergedOptions.toolbar) {
-            const toolbar: Toolbar = new Toolbar(this.vditor)
-            this.vditor.toolbar = toolbar
+            const toolbar: Toolbar = new Toolbar(this.vditor);
+            this.vditor.toolbar = toolbar;
         }
 
-        if (this.vditor.toolbar.elements.preview) {
-            const preview = new Preview(this.vditor)
-            this.vditor.preview = preview
+        if (this.vditor.toolbar.elements.devtools) {
+            this.vditor.devtools = new DevTools();
         }
 
-        if (mergedOptions.upload.url) {
-            const upload = new UploadClass()
-            this.vditor.upload = upload
+        loadLuteJs(this.vditor).then(() => {
+            if (this.vditor.editor && (this.vditor.toolbar.elements.preview || this.vditor.toolbar.elements.both)) {
+                const preview = new Preview(this.vditor);
+                this.vditor.preview = preview;
+            }
+
+            if (mergedOptions.upload.url || mergedOptions.upload.handler) {
+                const upload = new Upload();
+                this.vditor.upload = upload;
+            }
+
+            if (this.vditor.options.mode !== "markdown-only") {
+                this.vditor.wysiwyg = new WYSIWYG(this.vditor);
+            }
+
+            if (this.vditor.options.hint.at || this.vditor.toolbar.elements.emoji) {
+                const hint = new Hint();
+                this.vditor.hint = hint;
+            }
+
+            const ui = new Ui(this.vditor);
+        });
+    }
+
+    public getValue() {
+        return getText(this.vditor.editor.element);
+    }
+
+    public focus() {
+        if (this.vditor.currentMode === "markdown") {
+            this.vditor.editor.element.focus();
+        } else {
+            this.vditor.wysiwyg.element.focus();
+            this.vditor.wysiwyg.setExpand();
         }
+    }
 
-        new Ui(this.vditor)
-
-        if (this.vditor.options.hint.at || this.vditor.toolbar.elements.emoji) {
-            const hint = new Hint(this.vditor)
-            this.vditor.hint = hint
+    public blur() {
+        if (this.vditor.currentMode === "markdown") {
+            this.vditor.editor.element.blur();
+        } else {
+            this.vditor.wysiwyg.element.blur();
         }
-
-        new Hotkey(this.vditor)
     }
 
-    getValue() {
-        return this.vditor.editor.element.value
+    public disabled() {
+        this.vditor.editor.element.setAttribute("contenteditable", "false");
     }
 
-    insertValue(value: string) {
-        insertText(this.vditor.editor.element, value, '')
+    public enable() {
+        this.vditor.editor.element.setAttribute("contenteditable", "true");
     }
 
-    focus() {
-        this.vditor.editor.element.focus()
+    public setSelection(start: number, end: number) {
+        setSelectionByPosition(start, end, this.vditor.editor.element);
     }
 
-    blur() {
-        this.vditor.editor.element.blur()
+    public getSelection() {
+        let selectText = "";
+        if (window.getSelection().rangeCount !== 0) {
+            selectText = getSelectText(this.vditor.editor.element);
+        }
+        return selectText;
     }
 
-    disabled() {
-        this.vditor.editor.element.setAttribute('disabled', 'disabled')
+    public renderPreview(value?: string) {
+        this.vditor.preview.render(this.vditor, value);
     }
 
-    enable() {
-        this.vditor.editor.element.removeAttribute('disabled')
+    public getCursorPosition() {
+        if (this.vditor.currentMode === "wysiwyg") {
+            return getCursorPosition(this.vditor.wysiwyg.element);
+        } else {
+            return getCursorPosition(this.vditor.editor.element);
+        }
     }
 
-    setSelection(start: number, end: number) {
-        this.vditor.editor.element.selectionStart = start
-        this.vditor.editor.element.selectionEnd = end
-        this.vditor.editor.element.focus()
+    public isUploading() {
+        return this.vditor.upload.isUploading;
     }
 
-    getSelection() {
-        return this.vditor.editor.element.value.substring(this.vditor.editor.element.selectionStart, this.vditor.editor.element.selectionEnd)
+    public clearCache() {
+        localStorage.removeItem("vditor" + this.vditor.id);
     }
 
-    setValue(value: string) {
-        this.vditor.editor.element.selectionStart = 0
-        this.vditor.editor.element.selectionEnd = this.vditor.editor.element.value.length
-        insertText(this.vditor.editor.element, value, '', true)
+    public disabledCache() {
+        this.vditor.options.cache = false;
+    }
+
+    public enableCache() {
+        this.vditor.options.cache = true;
+    }
+
+    public html2md(value: string) {
+        return html2md(this.vditor, value);
+    }
+
+    public getHTML() {
+        return md2htmlByVditor(getText(this.vditor.editor.element), this.vditor);
+    }
+
+    public tip(text: string, time?: number) {
+        this.vditor.tip.show(text, time);
+    }
+
+    public setPreviewMode(mode: keyof IPreviewMode) {
+        setPreviewMode(mode, this.vditor);
+    }
+
+    public deleteValue() {
+        if (window.getSelection().isCollapsed) {
+            return;
+        }
+        insertText(this.vditor, "", "", true);
+    }
+
+    public updateValue(value: string) {
+        insertText(this.vditor, value, "", true);
+    }
+
+    public insertValue(value: string) {
+        insertText(this.vditor, value, "");
+    }
+
+    public setValue(value: string) {
+        formatRender(this.vditor, value, {
+            end: value.length,
+            start: value.length,
+        });
         if (!value) {
-            localStorage.removeItem('vditor' + this.vditor.id)
+            localStorage.removeItem("vditor" + this.vditor.id);
         }
-    }
-
-    renderPreview(value?: string) {
-        this.vditor.preview.render(this.vditor, value)
-    }
-
-    getCursorPosition() {
-        return getTextareaPosition(this.vditor.editor.element)
-    }
-
-    deleteValue() {
-        insertText(this.vditor.editor.element, '', '', true)
-    }
-
-    updateValue(value: string) {
-        insertText(this.vditor.editor.element, value, '', true)
-    }
-
-    isUploading() {
-        return this.vditor.upload.isUploading
-    }
-
-    clearCache() {
-        localStorage.removeItem('vditor' + this.vditor.id)
-    }
-
-    disabledCache() {
-        this.vditor.options.cache = false
-    }
-
-    enableCache() {
-        this.vditor.options.cache = true
     }
 }
 
-export default VditorClass
+export default Vditor;

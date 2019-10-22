@@ -1,0 +1,61 @@
+.vditor-wysiwyg {
+  background-color: $textareaBg;
+  box-sizing: border-box;
+  flex: 1;
+  margin: 0;
+  white-space: pre-wrap;
+
+  &[contenteditable="false"] {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  &:focus {
+    outline: none;
+    background-color: $textareaFocusBg;
+  }
+
+  .marker {
+    height: 0;
+    width: 0;
+    display: inline-block;
+    overflow: hidden;
+    transition: color .15s ease-in-out;
+    font-size: initial;
+    font-weight: normal;
+    line-height: 24px;
+  }
+
+  .newline {
+    display: none;
+  }
+
+  .node {
+    &--block {
+      position: relative;
+
+      & > .marker {
+        position: absolute;
+        left: 3px;
+      }
+    }
+
+    &--expand {
+      & > .marker {
+        width: auto;
+        height: auto;
+        display: inline;
+        color: #bbb;
+      }
+    }
+  }
+
+  li.node--expand .marker {
+    left: -9px;
+  }
+
+  p:empty:after {
+    content: '\200b';
+  }
+}
+

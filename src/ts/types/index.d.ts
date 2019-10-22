@@ -1,151 +1,312 @@
-declare module "*.svg" {
-    const content: string
-    export default content
+declare module "*.svg";
+
+declare module "*.png";
+
+declare module "highlight.js";
+
+declare module "mermaid";
+
+declare module "abcjs/src/api/abc_tunebook_svg";
+
+declare module "katex";
+declare module "katex/contrib/auto-render/auto-render";
+
+declare module "turndown";
+
+interface ITurndown {
+    addRule(key: string, rule: ITurndownRule): ITurndown;
 }
 
-declare module '*.png'
+interface ITurndownRule {
+    filter: string | string[] | ((node: HTMLInputElement) => boolean);
 
-declare module 'turndown'
+    replacement(content: string, node?: HTMLElement): string;
+}
 
-declare module 'turndown-plugin-gfm/lib/turndown-plugin-gfm.es.js'
+interface ILute {
+    New(): ILute;
+
+    SetEmojiSite(emojiSite: string): void;
+
+    PutEmojis(emojis: { [key: string]: string }): void;
+
+    MarkdownStr(error: string, text: string): string[];
+
+    GetEmojis(): { [key: string]: string };
+
+    FormatStr(error: string, text: string): string[];
+
+    RenderEChartsJSON(text: string): string[];
+
+    RenderVditorDOM(text: string, start: number, end: number): string[];
+
+    VditorNewline(ntype: string, param?: object): string[];
+
+    // SpinVditorDOM(html: string): string[];
+}
 
 declare var webkitAudioContext: {
     prototype: AudioContext
-    new(contextOptions?: AudioContextOptions): AudioContext
+    new(contextOptions?: AudioContextOptions): AudioContext,
+};
+
+interface IHTMLInputEvent extends Event {
+    target: HTMLInputElement & EventTarget;
+    isComposing: boolean;
 }
 
-declare interface Turndown {
-    prototype: {
-        escape(name: string): string
-    }
-    new(): {
-        addRule(name: string, options: {}): void
-        use(plugin: Turndown): void
-        turndown(text: string): string
-    }
-}
-
-interface HTMLInputEvent extends Event {
-    target: HTMLInputElement & EventTarget
-}
-
-interface IEDocument extends Document {
-    onselectstart: string | null
-    selection: { empty(): void }
-}
-
-interface I18nLang {
+interface II18nLang {
     en_US: string;
     zh_CN: string;
 }
 
-interface I18n {
-    en_US: { [key: string]: string }
-    zh_CN: { [key: string]: string }
+interface II18n {
+    en_US: { [key: string]: string };
+    zh_CN: { [key: string]: string };
 }
 
-interface Classes {
-    preview?: string
+interface IClasses {
+    preview?: string;
 }
 
-interface Upload {
-    url: string
-    max?: number
-    linkToImgUrl?: string
-    success?: { (textarea: HTMLTextAreaElement, msg: string): void }
-    error?: { (msg: string): void }
-    token?: string
-    filename?: { (name: string): string }
+interface IUpload {
+    url?: string;
+    max?: number;
+    linkToImgUrl?: string;
+    token?: string;
+    accept?: string;
+
+    success?(editor: HTMLPreElement, msg: string): void;
+
+    error?(msg: string): void;
+
+    filename?(name: string): string;
+
+    validate?(files: File[]): string | boolean;
+
+    handler?(files: File[]): string | null;
+
+    format?(files: File[], responseText: string): string;
 }
 
-interface MenuItem {
-    name: string
-    icon?: string
-    tip?: string
-    hotkey?: string
-    suffix?: string
-    prefix?: string
-    tipPosition?: string
+interface IMenuItem {
+    name: string;
+    icon?: string;
+    tip?: string;
+    hotkey?: string;
+    suffix?: string;
+    prefix?: string;
+    tipPosition?: string;
+
+    click?(): void;
 }
 
-interface Preview {
-    delay?: number
-    show?: boolean
-    parse?: { (element: HTMLElement): void }
-    url?: string
+interface IPreviewMode {
+    both: string;
+    preview: string;
+    editor: string;
 }
 
-interface HintData {
-    html: string,
-    value: string
+interface IPreview {
+    delay?: number;
+    maxWidth?: number;
+    mode?: keyof IPreviewMode;
+    url?: string;
+    hljs?: {
+        style?: string,
+        enable?: boolean,
+    };
+
+    parse?(element: HTMLElement): void;
 }
 
-interface Hint {
-    emojiTail?: string
-    delay?: number
-    emoji?: { [key: string]: string }
-    at?: { (value: string): Array<HintData> }
+interface IHintData {
+    html: string;
+    value: string;
 }
 
-interface Resize {
-    position?: string
-    enable?: boolean
-    after?: { (height: number): void }
+interface IHint {
+    emojiTail?: string;
+    delay?: number;
+    emoji?: { [key: string]: string };
+    emojiPath?: string;
+
+    at?(value: string): IHintData[];
 }
 
-interface Options {
-    height?: number | string
-    width?: number | string
-    placeholder?: string
-    lang?: (keyof I18nLang)
-    toolbar?: Array<string | MenuItem>
-    resize?: Resize
-    counter?: number
-    cache?: boolean
-    preview?: Preview
-    hint?: Hint
-    upload?: Upload
-    classes?: Classes
-    input?: { (value: string, previewElement?: HTMLElement): void }
-    focus?: { (value: string): void }
-    blur?: { (value: string): void }
-    esc?: { (value: string): void }
-    ctrlEnter?: { (value: string): void }
-    select?: { (value: string): void }
+interface IResize {
+    position?: string;
+    enable?: boolean;
+
+    after?(height: number): void;
 }
 
-interface Vditor {
-    id: string
-    mdTimeoutId: number
-    options: Options
+interface IPreviewOptions {
+    hljsStyle?: string;
+    enableHighlight?: boolean;
+    customEmoji?: { [key: string]: string };
+    lang?: (keyof II18nLang);
+    emojiPath?: string;
+}
+
+interface IOptions {
+    typewriterMode?: boolean;
+    keymap?: { [key: string]: string };
+    height?: number | string;
+    width?: number | string;
+    placeholder?: string;
+    lang?: (keyof II18nLang);
+    toolbar?: Array<string | IMenuItem>;
+    resize?: IResize;
+    counter?: number;
+    cache?: boolean;
+    mode?: "wysiwyg-show" | "markdown-show" | "wysiwyg-only" | "markdown-only";
+    preview?: IPreview;
+    hint?: IHint;
+    upload?: IUpload;
+    classes?: IClasses;
+
+    tab?: string;
+
+    input?(value: string, previewElement?: HTMLElement): void;
+
+    focus?(value: string): void;
+
+    blur?(value: string): void;
+
+    esc?(value: string): void;
+
+    ctrlEnter?(value: string): void;
+
+    select?(value: string): void;
+}
+
+interface IVditor {
+    id: string;
+    options: IOptions;
+    originalInnerHTML: string;
+    lute: ILute;
+    currentMode: "markdown" | "wysiwyg";
+    currentPreviewMode: keyof IPreviewMode;
+    devtools?: {
+        element: HTMLDivElement,
+        ASTChart: echarts.ECharts
+        renderEchart(vditor: IVditor): void,
+    };
     toolbar?: {
-        elements?: { [key: string]: HTMLElement }
-    }
+        elements?: { [key: string]: HTMLElement },
+    };
     preview?: {
         element: HTMLElement
-        render: { (vditor: Vditor, value?: string): void }
-    },
+        render(vditor: IVditor, value?: string): void,
+    };
     editor?: {
-        element: HTMLTextAreaElement
-    },
+        element: HTMLPreElement,
+        range: Range,
+    };
     counter?: {
         element: HTMLElement
-        render: { (length: number, counter: number): void }
-    },
+        render(length: number, counter: number): void,
+    };
     resize?: {
-        element: HTMLElement
-    },
+        element: HTMLElement,
+    };
     hint?: {
         timeId: number
-        editorElement: HTMLTextAreaElement
         element: HTMLUListElement
-        atUser: { (value: string): Array<HintData> }
-        commonEmoji: { [key: string]: string }
-        hintDelay: number
-        render(): void
-    }
+        fillEmoji(element: HTMLElement, vditor: IVditor): void
+        render(vditor: IVditor): void,
+    };
+    tip: {
+        element: HTMLElement
+        show(text: string, time?: number): void
+        hide(): void,
+    };
     upload?: {
         element: HTMLElement
-        isUploading: boolean
-    }
+        isUploading: boolean,
+    };
+    undo: {
+        redo(vditor: IVditor): void
+        undo(vditor: IVditor): void
+        addToUndoStack(vditor: IVditor): void
+        recordFirstPosition(vditor: IVditor): void,
+    };
+    wysiwyg: {
+        element: HTMLElement,
+        setExpand(): void,
+    };
+}
+
+declare class IVditorConstructor {
+
+    public static codeRender(element: HTMLElement, lang?: (keyof II18nLang)): void;
+
+    public static highlightRender(hljsStyle: string, enableHighlight: boolean, element?: HTMLElement | Document): void;
+
+    public static mathRenderByLute(element: HTMLElement): void;
+
+    public static mathRender(element: HTMLElement): void;
+
+    public static mermaidRender(element: HTMLElement): void;
+
+    public static chartRender(element?: HTMLElement | Document): void;
+
+    public static abcRender(element?: HTMLElement | Document): void;
+
+    public static mediaRender(element: HTMLElement): void;
+
+    public static md2html(mdText: string, options?: IPreviewOptions): string;
+
+    public static preview(element: HTMLTextAreaElement, options?: IPreviewOptions): void;
+
+    public readonly version: string;
+    public vditor: IVditor;
+
+    constructor(options: IOptions)
+
+    public getValue(): string;
+
+    public insertValue(value: string): void;
+
+    public focus(): void;
+
+    public blur(): void;
+
+    public disabled(): void;
+
+    public enable(): void;
+
+    public setSelection(start: number, end: number): void;
+
+    public getSelection(): string;
+
+    public setValue(text: string): void;
+
+    public renderPreview(value?: string): void;
+
+    public getCursorPosition(editor: HTMLPreElement): {
+        left: number,
+        top: number,
+    };
+
+    public deleteValue(): void;
+
+    public updateValue(): string;
+
+    public isUploading(): boolean;
+
+    public clearCache(): void;
+
+    public disabledCache(): void;
+
+    public enableCache(): void;
+
+    public html2md(value: string): string;
+
+    public getHTML(): string;
+
+    public tip(text: string, time?: number): void;
+
+    public setPreviewMode(mode: string): void;
 }
